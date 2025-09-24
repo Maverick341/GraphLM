@@ -16,7 +16,8 @@
     "utils": "@/src/lib/utils",
     "ui": "@/src/app/components/ui",
     "lib": "@/src/lib",
-    "hooks": "@/src/hooks"
+    "hooks": "@/src/hooks",
+    "ai-elements": "@/src/app/components/ai-elements" 
   },
   "registries": {}
 }
