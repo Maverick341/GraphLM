@@ -15,11 +15,15 @@ const documentSchema = new Schema(
       enum: ["uploaded", "indexed", "failed"],
       default: "uploaded",
     },
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
-  }
+  },
 );
 
-
-export const Document = mongoose.model('Document', documentSchema);
+export const Document = mongoose.model("Document", documentSchema);
