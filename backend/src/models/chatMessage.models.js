@@ -9,6 +9,7 @@ const chatMessageSchema = new Schema(
     },
     role: {
       type: String,
+      enum: ['user', 'assistant'],
       required: true,
     },
     content: {
