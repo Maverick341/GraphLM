@@ -44,9 +44,13 @@ app.get("/api/v1/", (req, res) => {
 //router imports
 import healthCheckRouter from "./routes/healthcheck.routes.js";
 import authRouter from "./routes/auth.routes.js";
+import documentRouter from "./routes/document.routes.js";
+import chatRouter from "./routes/chat.routes.js";
 
 app.use("/api/v1/healthCheck", healthCheckRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/documents", documentRouter);
+app.use("/api/v1/chat", chatRouter);
 
 app.use(errorHandler);
 

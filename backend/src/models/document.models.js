@@ -6,15 +6,27 @@ const documentSchema = new Schema(
       type: String,
       required: true,
     },
-    filename: {
-      type: String,
+
+    file: {
+      type: {
+        url: {
+          type: String,
+          required: true,
+        },
+        localpath: {
+          type: String,
+          default: "",
+        },
+      },
       required: true,
     },
+
     status: {
       type: String,
       enum: ["uploaded", "indexed", "failed"],
       default: "uploaded",
     },
+
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
