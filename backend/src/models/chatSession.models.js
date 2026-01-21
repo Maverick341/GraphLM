@@ -11,10 +11,10 @@ const chatSessionSchema = new Schema(
       ref: "User",
       required: true,
     },
-    documents: [
+    sources: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Document",
+        ref: "Source",
         required: true,
       },
     ],

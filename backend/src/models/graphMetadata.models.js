@@ -1,9 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 
 const graphMetadataSchema = new Schema({
-  documentId: {
+  sourceId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Document",
+    ref: "Source",
     required: true,
     unique: true,
   },

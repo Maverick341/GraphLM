@@ -10,35 +10,31 @@ import {
 
 const router = Router();
 
-// Apply auth middleware to all routes
 router.use(isLoggedIn);
 
 /**
  * POST /api/v1/documents
- * Upload a new document (PDF)
- * Requires: file in multipart form-data
+ * Upload a new PDF document (Source: pdf)
  */
-router.route("/").post(
+router.post(
+  "/",
   upload.single("document"),
   uploadDocument
 );
 
 /**
  * GET /api/v1/documents
- * List all documents for authenticated user
  */
-router.route("/").get(listUserDocuments);
+router.get("/", listUserDocuments);
 
 /**
  * GET /api/v1/documents/:documentId
- * Retrieve a specific document by ID
  */
-router.route("/:documentId").get(getDocumentById);
+router.get("/:documentId", getDocumentById);
 
 /**
  * DELETE /api/v1/documents/:documentId
- * Delete a document by ID
  */
-router.route("/:documentId").delete(deleteDocument);
+router.delete("/:documentId", deleteDocument);
 
 export default router;
