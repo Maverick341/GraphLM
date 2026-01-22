@@ -55,7 +55,7 @@ const sourceSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["uploaded", "indexed", "failed"],
+      enum: ["uploaded", "indexing", "indexed", "failed"],
       default: "uploaded",
     },
 

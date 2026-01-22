@@ -5,8 +5,12 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { indexPDFToQdrant } from "../services/vectorIndex.service.js";
-import { deleteQdrantCollection } from "../services/vectorIndex.service.js";
+import { 
+  indexPDF, 
+  deleteQdrantCollection, 
+  indexToNeo4j,
+  deleteNeo4jBySourceId 
+} from "../services/indexing.service.js";
 import path from "path";
 import fs from "fs";
 
@@ -23,11 +27,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
   let source;
   let collectionName;
+  let splitDocs;
 
   try {
     const filename = req.file.filename;
     const title = path.parse(filename).name;
 
+    // Step 1: Create Source (status = "uploaded")
     source = await Source.create({
       title,
       sourceType: "pdf",
@@ -40,17 +46,25 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
     collectionName = `source_${source._id}`;
 
-    const vectorIndexResult = await indexPDFToQdrant(
+    // Step 2: Qdrant indexing (vector embeddings)
+    const vectorIndexResult = await indexPDF(
       documentLocalPath,
-      collectionName
+      collectionName,
+      source._id,
+      "pdf"
     );
 
+    // Store VectorIndexMetadata
     await VectorIndexMetadata.create({
       sourceId: source._id,
       provider: "qdrant",
       collectionName,
       indexedAt: new Date()
     });
+
+    // Step 3: Set status = "indexing"
+    source.status = "indexing";
+    await source.save();
 
     const cloudinaryResponse = await uploadOnCloudinary(documentLocalPath);
     
@@ -59,8 +73,35 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     }
 
     source.file.url = cloudinaryResponse.secure_url;
-    source.status = "indexed";
     await source.save();
+
+    // Step 4: Start Neo4j indexing asynchronously (don't await)
+    (async () => {
+      try {
+        const graphResult = await indexToNeo4j({
+          sourceId: source._id,
+          docs: vectorIndexResult.splitDocs,
+        });
+
+        // Store GraphMetadata
+        await GraphMetadata.create({
+          sourceId: source._id,
+          entityCount: graphResult.nodesAdded,
+          relationCount: graphResult.relationshipsAdded,
+          builtAt: new Date()
+        });
+
+        // Step 5: On success → status = "indexed"
+        await Source.findByIdAndUpdate(source._id, { status: "indexed" });
+        console.log(`Neo4j indexing completed successfully for source ${source._id}`);
+      } catch (error) {
+        // Step 6: On failure → status = "failed" (NO deletion)
+        console.error(`Neo4j indexing failed for source ${source._id}:`, error);
+        await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch((err) => {
+          console.error("Failed to update source status to failed:", err);
+        });
+      }
+    })();
 
     return res
       .status(201)
@@ -74,37 +115,15 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             status: source.status,
             collectionName,
             fileUrl: cloudinaryResponse.secure_url,
-            vectorIndexed: vectorIndexResult.added,
+            vectorIndexed: vectorIndexResult.vector.chunksIndexed,
+            message: "PDF uploaded and vector indexing completed. Graph indexing in progress.",
             createdAt: source.createdAt
           },
-          "PDF uploaded, indexed, and source created successfully"
+          "PDF uploaded successfully. Vector indexing complete, graph indexing in progress."
         )
       );
   } catch (error) {
     console.error("Error during PDF upload and indexing:", error);
-
-    // Try to delete the source that was created
-    if (source && source._id) {
-      await Source.findByIdAndDelete(source._id).catch((err) => {
-        console.error("Failed to delete source during cleanup:", err);
-      });
-    }
-
-    // Try to delete VectorIndexMetadata if it was created
-    if (source && source._id) {
-      await VectorIndexMetadata.findOneAndDelete({ sourceId: source._id }).catch(
-        (err) => {
-          console.error("Failed to delete VectorIndexMetadata during cleanup:", err);
-        }
-      );
-    }
-
-    // Try to clean up Qdrant collection if it was created
-    if (collectionName) {
-      await deleteQdrantCollection(collectionName).catch((err) => {
-        console.error("Failed to delete Qdrant collection during cleanup:", err);
-      });
-    }
 
     // Try to clean up local file if it still exists
     if (documentLocalPath && fs.existsSync(documentLocalPath)) {
@@ -113,6 +132,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
       } catch (err) {
         console.error("Failed to delete local file during cleanup:", err);
       }
+    }
+
+    // If source was created, set status to failed (NO deletion)
+    if (source && source._id) {
+      await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch((err) => {
+        console.error("Failed to update source status to failed:", err);
+      });
     }
 
     // Re-throw as ApiError
@@ -216,7 +242,10 @@ export const deleteDocument = asyncHandler(async (req, res) => {
       }
     );
 
-    // TODO: Clean up Neo4j subgraph
+    // Clean up Neo4j subgraph
+    await deleteNeo4jBySourceId(source._id).catch((err) => {
+      console.error(`Failed to delete Neo4j entities for source ${source._id}:`, err);
+    });
   } catch (error) {
     console.error("Error during document deletion cleanup:", error);
     // Don't throw - source is already deleted, just log cleanup errors
