@@ -1,5 +1,6 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
+import config from "../config/config";
 
 export const sendMail = async (options) => {
     const mailGenerator = new Mailgen({
@@ -17,17 +18,18 @@ export const sendMail = async (options) => {
     const emailText = mailGenerator.generatePlaintext(options.mailGenContent);
 
     const transporter = nodemailer.createTransport({
-        host: process.env.MAILTRAP_SMTP_HOST,
-        port: process.env.MAILTRAP_SMTP_PORT,
+        host: config.MAILTRAP_SMTP_HOST,
+        port: config.MAILTRAP_SMTP_PORT,
         secure: false, // true for port 465, false for other ports
         auth: {
-            user: process.env.MAILTRAP_SMTP_USER,
-            pass: process.env.MAILTRAP_SMTP_PASS,
+            user: config.MAILTRAP_SMTP_USER,
+            pass: config.MAILTRAP_SMTP_PASS,
         },
     });
 
     const mail = {
         from: '"Maddison Foo Koch 👻" <maddison53@ethereal.email>', // sender address
+        // from: `"${config.MAIL_FROM_NAME}" <${config.MAIL_FROM_EMAIL}>`,
         to: options.email, // list of receivers
         subject: options.subject, // Subject line
         text: emailText, // plain text body

@@ -4,6 +4,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { ApiError } from "./api-error.js";
 import { ErrorCodes } from "./constants.js";
+import config from "../config/config.js";
 
 dotenv.config({
     path: "./.env"
@@ -19,7 +20,7 @@ const generateNonce = () => {
 
 const getJwksClient = () => {
     return jwksClient({
-        jwksUri: process.env.GOOGLE_JWKS_URL,
+        jwksUri: config.GOOGLE_JWKS_URL,
         cache: true,
         rateLimit: true,
     });
@@ -54,7 +55,7 @@ const verifyGoogleToken = async (token) => {
 
         const verifiedToken = jwt.verify(token, signingKey, {
             algorithms: ["RS256"],
-            audience: process.env.GOOGLE_CLIENT_ID,
+            audience: config.GOOGLE_CLIENT_ID,
         });
         return verifiedToken;
     } catch (error) {

@@ -1,3 +1,4 @@
+import config from "../config/config.js";
 import { ApiError } from "../utils/api-error.js";
 import getErrorMessage from "../utils/getErrorMessage.js";
 
@@ -12,7 +13,7 @@ function errorHandler(err, req, res, next) {
       success: err.success,
       message: err.message,
       code: err.code || "INTERNAL_SERVER_ERROR",
-      ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+      ...(config.NODE_ENV !== "production" && { stack: err.stack }),
       ...(err.errors && err.errors.length > 0 && { errors: err.errors }),
     });
     return;
@@ -24,7 +25,7 @@ function errorHandler(err, req, res, next) {
     success: false,
     message: getErrorMessage(err) || "An error occured. Please view logs for more details.",
     code: "INTERNAL_SERVER_ERROR",
-    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+    ...(config.NODE_ENV !== "production" && { stack: err.stack }),
   });
 }
 

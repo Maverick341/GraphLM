@@ -17,6 +17,7 @@ import {
   verifyGoogleToken,
 } from "../utils/authUtils.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import config from "../config/config.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, username, password } = req.body;
@@ -77,7 +78,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  const verificationUrl = `${process.env.BASE_URL}api/v1/users/verifyEmail/${unHashedToken}`;
+  const verificationUrl = `${config.BASE_URL}api/v1/users/verifyEmail/${unHashedToken}`;
 
   await sendMail({
     email: user.email,
@@ -166,7 +167,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     });
   }
 
-  const refreshDecoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+  const refreshDecoded = jwt.verify(token, config.REFRESH_TOKEN_SECRET);
 
   const user = await User.findOne({ _id: refreshDecoded._id });
 
@@ -284,7 +285,7 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
 
   await user.save({ validateBeforeSave: false });
 
-  const verificationUrl = `${process.env.BASE_URL}api/v1/users/verifyEmail/${unHashedToken}`;
+  const verificationUrl = `${config.BASE_URL}api/v1/users/verifyEmail/${unHashedToken}`;
 
   await sendMail({
     email: user.email,
@@ -314,7 +315,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    decoded = jwt.verify(refreshToken, config.REFRESH_TOKEN_SECRET);
   } catch (error) {
     throw new ApiError(403, "Invalid or expired refresh token", {
       code: ErrorCodes.REFRESH_TOKEN_INVALID,
@@ -376,7 +377,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  const passwordResetUrl = `${process.env.BASE_URL}api/v1/auth/resetPassword/${unHashedToken}`;
+  const passwordResetUrl = `${config.BASE_URL}api/v1/auth/resetPassword/${unHashedToken}`;
 
   await sendMail({
     email: user.email,
@@ -615,7 +616,7 @@ const googleLogin = asyncHandler(async (req, res) => {
     sameSite: "lax",
   });
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT_URI}&response_type=code&scope=email%20profile%20openid&state=${state}&nonce=${nonce}`;
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.GOOGLE_CLIENT_ID}&redirect_uri=${config.GOOGLE_REDIRECT_URI}&response_type=code&scope=email%20profile%20openid&state=${state}&nonce=${nonce}`;
 
   res.redirect(googleAuthUrl);
 });
@@ -640,9 +641,9 @@ const googleCallback = asyncHandler(async (req, res) => {
     null,
     {
       params: {
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        client_id: config.GOOGLE_CLIENT_ID,
+        client_secret: config.GOOGLE_CLIENT_SECRET,
+        redirect_uri: config.GOOGLE_REDIRECT_URI,
         code,
         grant_type: "authorization_code",
       },
@@ -682,19 +683,18 @@ const googleCallback = asyncHandler(async (req, res) => {
         url: googleProfilePic,
         googleRefreshToken: googleRefreshToken || null,
       },
-      process.env.TEMP_TOKEN_SECRET,
+      config.TEMP_TOKEN_SECRET,
       { expiresIn: "5m" },
     );
 
     res.cookie("tempToken", tempToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: config.NODE_ENV === "production",
       maxAge: 5 * 60 * 1000, // 5 min
     });
 
-    return res.redirect(`${process.env.CLIENT_URL}/complete-profile`);
-
-    // return res.redirect(`${process.env.CLIENT_URL}/complete-profile?token=${tempToken}`);
+    return res.redirect(`${config.CLIENT_URL}/complete-profile`);
+    // return res.redirect(`${config.CLIENT_URL}/complete-profile?token=${tempToken}`);
   } else {
     let modified = false;
 
@@ -715,30 +715,30 @@ const googleCallback = asyncHandler(async (req, res) => {
     // Generate our own JWT access and refresh tokens for the user
     const accessToken = jwt.sign(
       { _id: user._id, email: user.email },
-      process.env.ACCESS_TOKEN_SECRET,
+      config.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+        expiresIn: config.ACCESS_TOKEN_EXPIRY,
       },
     );
 
     const refreshToken = jwt.sign(
       { _id: user._id, email: user.email },
-      process.env.REFRESH_TOKEN_SECRET,
+      config.REFRESH_TOKEN_SECRET,
       {
-        expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+        expiresIn: config.REFRESH_TOKEN_EXPIRY,
       },
     );
 
     // Set the JWT tokens in a cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: config.NODE_ENV === "production",
       maxAge: 3600000, // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: config.NODE_ENV === "production",
       maxAge: 86400000, // 24 hour
     });
 
@@ -778,14 +778,14 @@ const completeGoogleSignup = asyncHandler(async (req, res) => {
 
   const accessToken = jwt.sign(
     { _id: user._id, email: user.email },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
+    config.ACCESS_TOKEN_SECRET,
+    { expiresIn: config.ACCESS_TOKEN_EXPIRY },
   );
 
   const refreshToken = jwt.sign(
     { _id: user._id, email: user.email },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
+    config.REFRESH_TOKEN_SECRET,
+    { expiresIn: config.REFRESH_TOKEN_EXPIRY },
   );
 
   res.cookie("accessToken", accessToken, { httpOnly: true, maxAge: 3600000 });
@@ -819,7 +819,7 @@ const githubLogin = asyncHandler(async (req, res) => {
     sameSite: "lax",
   });
 
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${process.env.GITHUB_REDIRECT_URI}&scope=user:email&state=${state}`;
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${config.GITHUB_CLIENT_ID}&redirect_uri=${config.GITHUB_REDIRECT_URI}&scope=user:email&state=${state}`;
 
   res.redirect(githubAuthUrl);
 });
@@ -839,10 +839,10 @@ const githubCallback = asyncHandler(async (req, res) => {
   const tokenResponse = await axios.post(
     "https://github.com/login/oauth/access_token",
     {
-      client_id: process.env.GITHUB_CLIENT_ID,
-      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      client_id: config.GITHUB_CLIENT_ID,
+      client_secret: config.GITHUB_CLIENT_SECRET,
       code,
-      redirect_uri: process.env.GITHUB_REDIRECT_URI,
+      redirect_uri: config.GITHUB_REDIRECT_URI,
     },
     {
       headers: {
@@ -921,27 +921,27 @@ const githubCallback = asyncHandler(async (req, res) => {
   // Generate JWT
   const accessToken = jwt.sign(
     { _id: user._id, email: user.email },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
+    config.ACCESS_TOKEN_SECRET,
+    { expiresIn: config.ACCESS_TOKEN_EXPIRY },
   );
 
   const refreshToken = jwt.sign(
     { _id: user._id, email: user.email },
-    process.env.REFRESH_TOKEN_SECRET,
+    config.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+      expiresIn: config.REFRESH_TOKEN_EXPIRY,
     },
   );
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: config.NODE_ENV === "production",
     maxAge: 3600000,
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: config.NODE_ENV === "production",
     maxAge: 3600000,
   });
 
