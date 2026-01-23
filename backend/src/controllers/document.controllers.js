@@ -5,12 +5,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { 
-  indexPDF, 
-  deleteQdrantCollection, 
-  indexToNeo4j,
-  deleteNeo4jBySourceId 
-} from "../services/indexing.service.js";
+import { deleteQdrantCollection, indexPDF } from "../services/vectorIndex.js";
+import { deleteNeo4jBySourceId, indexToNeo4j } from "../services/graphIndex.js";
 import path from "path";
 import fs from "fs";
 
