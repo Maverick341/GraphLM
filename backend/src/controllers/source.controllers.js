@@ -5,7 +5,7 @@ import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
 import { indexGithubRepo } from "../services/vectorIndex.js";
-import { indexToNeo4j } from "../services/graphIndex.js";
+import { indexGithubRepoToNeo4j } from "../services/graphIndex.js";
 
 /**
  * Get all sources for the logged-in user
@@ -129,13 +129,10 @@ const createGithubSource = asyncHandler(async (req, res) => {
     await source.save();
 
     // Step 4: Start Neo4j indexing asynchronously (don't await)
-    // TODO: Implement Neo4j indexing for GitHub repositories
-    // This should extract entities and relationships from code/docs
+    // Index GitHub repository for graph structure and semantic relationships
     (async () => {
       try {
-        // TODO: Uncomment when Neo4j indexing is ready for GitHub sources
-        /*
-        const graphResult = await indexToNeo4j({
+        const graphResult = await indexGithubRepoToNeo4j({
           sourceId: source._id,
           docs: vectorIndexResult.splitDocs,
         });
@@ -151,10 +148,6 @@ const createGithubSource = asyncHandler(async (req, res) => {
         // Step 5: On success → status = "indexed"
         await Source.findByIdAndUpdate(source._id, { status: "indexed" });
         console.log(`Neo4j indexing completed successfully for source ${source._id}`);
-        */
-
-        // Temporary: Mark as indexed after vector indexing
-        await Source.findByIdAndUpdate(source._id, { status: "indexed" });
       } catch (error) {
         // Step 6: On failure → status = "failed" (NO deletion)
         console.error(`Neo4j indexing failed for source ${source._id}:`, error);
