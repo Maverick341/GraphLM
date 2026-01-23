@@ -15,7 +15,7 @@ import config from "../config/config.js";
  * @param {number} params.concurrency - Optional concurrency limit
  * @returns {Promise<Object>} Response with nodes and relationships count
  */
-export const indexToNeo4j = async ({
+export const indexPDFToNeo4j = async ({
   sourceId,
   docs,
   modelName = config.OPENAI_LLM_MODEL,
@@ -207,6 +207,6 @@ export const deleteNeo4jBySourceId = async (sourceId) => {
 };
 
 export default {
-  indexToNeo4j,
+  indexPDFToNeo4j,
   deleteNeo4jBySourceId,
 };

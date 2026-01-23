@@ -6,7 +6,7 @@ import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
 import { deleteQdrantCollection, indexPDF } from "../services/vectorIndex.js";
-import { deleteNeo4jBySourceId, indexToNeo4j } from "../services/graphIndex.js";
+import { deleteNeo4jBySourceId, indexPDFToNeo4j } from "../services/graphIndex.js";
 import path from "path";
 import fs from "fs";
 
@@ -74,7 +74,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     // Step 4: Start Neo4j indexing asynchronously (don't await)
     (async () => {
       try {
-        const graphResult = await indexToNeo4j({
+        const graphResult = await indexPDFToNeo4j({
           sourceId: source._id,
           docs: vectorIndexResult.splitDocs,
         });
