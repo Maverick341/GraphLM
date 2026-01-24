@@ -5,8 +5,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { deleteQdrantCollection, indexPDF } from "../services/vectorIndex.js";
-import { deleteNeo4jBySourceId, indexPDFToNeo4j } from "../services/graphIndex.js";
+import { indexPDFSource ,deleteQdrantCollection } from "../services/vectorIndex.js";
+import { buildPDFGraph, deleteGraphBySourceId } from "../services/graphIndex.js";
 import path from "path";
 import fs from "fs";
 
@@ -14,7 +14,7 @@ import fs from "fs";
  * POST /api/v1/documents
  * Upload a new document (PDF)
  */
-export const uploadDocument = asyncHandler(async (req, res) => {
+export const addPDFSource = asyncHandler(async (req, res) => {
   const documentLocalPath = req.file?.path;
   
   if (!documentLocalPath) {
@@ -43,7 +43,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     collectionName = `source_${source._id}`;
 
     // Step 2: Qdrant indexing (vector embeddings)
-    const vectorIndexResult = await indexPDF(
+    const vectorIndexResult = await indexPDFSource(
       documentLocalPath,
       collectionName,
       source._id,
@@ -74,7 +74,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     // Step 4: Start Neo4j indexing asynchronously (don't await)
     (async () => {
       try {
-        const graphResult = await indexPDFToNeo4j({
+        const graphResult = await buildPDFGraph({
           sourceId: source._id,
           docs: vectorIndexResult.splitDocs,
         });
@@ -239,7 +239,7 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     );
 
     // Clean up Neo4j subgraph
-    await deleteNeo4jBySourceId(source._id).catch((err) => {
+    await deleteGraphBySourceId(source._id).catch((err) => {
       console.error(`Failed to delete Neo4j entities for source ${source._id}:`, err);
     });
   } catch (error) {

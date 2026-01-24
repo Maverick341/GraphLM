@@ -15,7 +15,7 @@ import config from "../config/config.js";
  * @param {number} params.concurrency - Optional concurrency limit
  * @returns {Promise<Object>} Response with nodes and relationships count
  */
-export const indexPDFToNeo4j = async ({
+export const buildPDFGraph = async ({
   sourceId,
   docs,
   modelName = config.OPENAI_LLM_MODEL,
@@ -173,7 +173,7 @@ export const indexPDFToNeo4j = async ({
  * @param {number} params.concurrency - Optional concurrency limit
  * @returns {Promise<Object>} Response with source, files, nodes and relationships count
  */
-export const indexGithubRepoToNeo4j = async ({
+export const buildGithubRepoGraph = async ({
   sourceId,
   docs,
   modelName = config.OPENAI_LLM_MODEL,
@@ -234,7 +234,7 @@ export const indexGithubRepoToNeo4j = async ({
       limit(async () => {
         try {
           // Extract file path and language from document metadata
-          const filePath = doc.metadata?.filePath || "unknown";
+          const filePath = doc.metadata?.path || "unknown";
           const language = doc.metadata?.language || "unknown";
           const fileType = doc.metadata?.fileType || "unknown";
 
@@ -370,7 +370,7 @@ export const indexGithubRepoToNeo4j = async ({
  * @param {string} sourceId - Source ID to delete from Neo4j
  * @returns {Promise<Object>} Response with deletion status
  */
-export const deleteNeo4jBySourceId = async (sourceId) => {
+export const deleteGraphBySourceId = async (sourceId) => {
   let neo4jGraph;
 
   try {
@@ -416,7 +416,7 @@ export const deleteNeo4jBySourceId = async (sourceId) => {
 };
 
 export default {
-  indexPDFToNeo4j,
-  indexGithubRepoToNeo4j,
-  deleteNeo4jBySourceId,
+  buildPDFGraph,
+  buildGithubRepoGraph,
+  deleteGraphBySourceId,
 };

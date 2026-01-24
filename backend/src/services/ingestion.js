@@ -3,7 +3,6 @@ import { GithubRepoLoader } from "@langchain/community/document_loaders/web/gith
 import { RecursiveCharacterTextSplitter } from "@langchain/text-splitters";
 import { ApiError } from "../utils/api-error.js";
 
-// Shared text splitter configuration
 const SPLITTER_CONFIG = {
   chunkSize: 1000,
   chunkOverlap: 200,
@@ -14,13 +13,12 @@ const SPLITTER_CONFIG = {
  * @param {string} documentLocalPath - Path to the PDF file
  * @returns {Promise<Array>} Array of split document chunks
  */
-export const loadAndSplitPDF = async (documentLocalPath) => {
+export const loadAndPreparePDF = async (documentLocalPath) => {
   try {
     if (!documentLocalPath) {
       throw new ApiError(400, "Document local path is required");
     }
 
-    // Step 1: Load PDF
     const loader = new PDFLoader(documentLocalPath);
     const docs = await loader.load();
 
@@ -28,7 +26,6 @@ export const loadAndSplitPDF = async (documentLocalPath) => {
       throw new ApiError(400, "Failed to load PDF or PDF is empty");
     }
 
-    // Step 2: Split documents
     const splitter = new RecursiveCharacterTextSplitter(SPLITTER_CONFIG);
     const splitDocs = await splitter.splitDocuments(docs);
 
@@ -53,7 +50,7 @@ export const loadAndSplitPDF = async (documentLocalPath) => {
  * @param {string} params.accessToken - GitHub access token (from env: GITHUB_ACCESS_TOKEN)
  * @returns {Promise<Array>} Array of split document chunks with GitHub metadata
  */
-export const loadAndSplitGithubRepo = async ({
+export const loadAndPrepareGithubRepo = async ({
   repoUrl,
   branch = "main",
   accessToken,
@@ -67,12 +64,6 @@ export const loadAndSplitGithubRepo = async ({
       throw new ApiError(400, "GitHub access token is required");
     }
 
-    // Step 1: Load GitHub repository
-    // GithubRepoLoader automatically:
-    // - Respects .gitignore
-    // - Ignores binaries
-    // - Loads only repository files (code + markdown)
-    // - Does NOT index issues or PRs
     const loader = new GithubRepoLoader(repoUrl, {
       branch,
       accessToken,
@@ -139,9 +130,25 @@ export const loadAndSplitGithubRepo = async ({
       };
     });
 
-    // Step 3: Split documents with shared configuration
-    const splitter = new RecursiveCharacterTextSplitter(SPLITTER_CONFIG);
-    const splitDocs = await splitter.splitDocuments(enrichedDocs);
+    const largeFileSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1500,
+      chunkOverlap: 0,
+    });
+
+    const splitDocs = [];
+
+    for (const doc of enrichedDocs) {
+      const contentLength = doc.pageContent.length;
+
+      if (contentLength < 2000) {
+        // Small file → keep as-is, no split
+        splitDocs.push(doc);
+      } else {
+        // Large file → split without overlap
+        const chunks = await largeFileSplitter.splitDocuments([doc]);
+        splitDocs.push(...chunks);
+      }
+    }
 
     if (!splitDocs || splitDocs.length === 0) {
       throw new ApiError(400, "Failed to split GitHub repository documents");
@@ -160,6 +167,6 @@ export const loadAndSplitGithubRepo = async ({
 };
 
 export default {
-  loadAndSplitPDF,
-  loadAndSplitGithubRepo,
+  loadAndPreparePDF,
+  loadAndPrepareGithubRepo,
 };

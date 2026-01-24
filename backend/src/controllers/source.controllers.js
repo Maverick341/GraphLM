@@ -4,8 +4,8 @@ import { ApiError } from "../utils/api-error.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { indexGithubRepo } from "../services/vectorIndex.js";
-import { indexGithubRepoToNeo4j } from "../services/graphIndex.js";
+import { indexGithubSource } from "../services/vectorIndex.js";
+import { buildGithubRepoGraph } from "../services/graphIndex.js";
 
 /**
  * Get all sources for the logged-in user
@@ -71,7 +71,7 @@ const getSourceById = asyncHandler(async (req, res) => {
  * @body {string} repoUrl - GitHub repository URL
  * @body {string} branch - (optional) GitHub branch name, defaults to "main"
  */
-const createGithubSource = asyncHandler(async (req, res) => {
+const addGithubSource = asyncHandler(async (req, res) => {
   const { repoUrl, branch = "main" } = req.body;
   const userId = req.user._id;
 
@@ -109,7 +109,7 @@ const createGithubSource = asyncHandler(async (req, res) => {
     collectionName = `github_${source._id}`;
 
     // Step 2: Qdrant indexing (vector embeddings)
-    vectorIndexResult = await indexGithubRepo({
+    vectorIndexResult = await indexGithubSource({
       repoUrl,
       branch,
       collectionName,
@@ -132,7 +132,7 @@ const createGithubSource = asyncHandler(async (req, res) => {
     // Index GitHub repository for graph structure and semantic relationships
     (async () => {
       try {
-        const graphResult = await indexGithubRepoToNeo4j({
+        const graphResult = await buildGithubRepoGraph({
           sourceId: source._id,
           docs: vectorIndexResult.splitDocs,
         });
@@ -238,6 +238,6 @@ const deleteSource = asyncHandler(async (req, res) => {
 export {
   getAllSources,
   getSourceById,
-  createGithubSource,
+  addGithubSource,
   deleteSource,
 };

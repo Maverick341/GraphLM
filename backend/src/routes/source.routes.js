@@ -3,7 +3,7 @@ import { isLoggedIn } from "../middlewares/auth.middlewares.js";
 import {
   getAllSources,
   getSourceById,
-  createGithubSource,
+  addGithubSource,
   deleteSource,
 } from "../controllers/source.controllers.js";
 
@@ -19,7 +19,7 @@ router.get("/", getAllSources);
 router.get("/:id", getSourceById);
 
 // POST /sources/github - Create a new GitHub repo source
-router.post("/github", createGithubSource);
+router.post("/github", addGithubSource);
 
 // DELETE /sources/:id - Delete a source
 router.delete("/:id", deleteSource);

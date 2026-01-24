@@ -2,7 +2,7 @@ import { Router } from "express";
 import { isLoggedIn } from "../middlewares/auth.middlewares.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import {
-  uploadDocument,
+  addPDFSource,
   listUserDocuments,
   getDocumentById,
   deleteDocument,
@@ -14,12 +14,12 @@ router.use(isLoggedIn);
 
 /**
  * POST /api/v1/documents
- * Upload a new PDF document (Source: pdf)
+ * Add a new PDF document (Source: pdf)
  */
 router.post(
   "/",
   upload.single("document"),
-  uploadDocument
+  addPDFSource
 );
 
 /**
