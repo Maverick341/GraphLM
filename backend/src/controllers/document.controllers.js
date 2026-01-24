@@ -100,10 +100,10 @@ export const addPDFSource = asyncHandler(async (req, res) => {
     })();
 
     return res
-      .status(201)
+      .status(202)
       .json(
         new ApiResponse(
-          201,
+          202,
           {
             sourceId: source._id,
             title: source.title,
@@ -112,10 +112,11 @@ export const addPDFSource = asyncHandler(async (req, res) => {
             collectionName,
             fileUrl: cloudinaryResponse.secure_url,
             vectorIndexed: vectorIndexResult.vector.chunksIndexed,
-            message: "PDF uploaded and vector indexing completed. Graph indexing in progress.",
+            statusUrl: `/sources/${source._id}/status`,
+            message: "PDF accepted for processing. Vector indexing complete, graph indexing in progress.",
             createdAt: source.createdAt
           },
-          "PDF uploaded successfully. Vector indexing complete, graph indexing in progress."
+          "PDF accepted for processing"
         )
       );
   } catch (error) {

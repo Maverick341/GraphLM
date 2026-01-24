@@ -4,6 +4,7 @@ import {
   getAllSources,
   getSourceById,
   addGithubSource,
+  getSourceStatus,
   deleteSource,
 } from "../controllers/source.controllers.js";
 
@@ -17,6 +18,9 @@ router.get("/", getAllSources);
 
 // GET /sources/:id - Get a specific source by ID
 router.get("/:id", getSourceById);
+
+// GET /sources/:id/status - Get indexing status
+router.get("/:id/status", getSourceStatus);
 
 // POST /sources/github - Create a new GitHub repo source
 router.post("/github", addGithubSource);

@@ -160,10 +160,10 @@ const addGithubSource = asyncHandler(async (req, res) => {
     })();
 
     return res
-      .status(201)
+      .status(202)
       .json(
         new ApiResponse(
-          201,
+          202,
           {
             sourceId: source._id,
             title: source.title,
@@ -171,11 +171,12 @@ const addGithubSource = asyncHandler(async (req, res) => {
             status: source.status,
             collectionName,
             vectorIndexed: vectorIndexResult.vector.chunksIndexed,
+            statusUrl: `/sources/${source._id}/status`,
             message:
-              "GitHub repository indexed successfully. Graph indexing pending.",
+              "GitHub repository accepted for processing. Vector indexing complete, graph indexing in progress.",
             createdAt: source.createdAt,
           },
-          "GitHub repository indexed successfully. Vector indexing complete."
+          "GitHub repository accepted for processing"
         )
       );
   } catch (error) {
@@ -199,6 +200,60 @@ const addGithubSource = asyncHandler(async (req, res) => {
       `Failed to create and index GitHub source: ${error.message}`
     );
   }
+});
+
+/**
+ * Get indexing status of a source (PDF or GitHub)
+ * @route GET /sources/:id/status
+ * @param {string} id - Source ID
+ */
+const getSourceStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user._id;
+
+  const source = await Source.findOne({
+    _id: id,
+    ownerId: userId
+  });
+
+  if (!source) {
+    throw new ApiError(404, "Source not found");
+  }
+
+  // Check vector indexing status
+  const vectorMetadata = await VectorIndexMetadata.findOne({
+    sourceId: id
+  });
+
+  // Check graph indexing status
+  const graphMetadata = await GraphMetadata.findOne({
+    sourceId: id
+  });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          sourceId: source._id,
+          title: source.title,
+          sourceType: source.sourceType,
+          status: source.status,
+          vector: {
+            ready: !!vectorMetadata
+          },
+          graph: {
+            ready: !!graphMetadata,
+            ...(graphMetadata && {
+              entityCount: graphMetadata.entityCount,
+              relationCount: graphMetadata.relationCount
+            })
+          }
+        },
+        "Source status retrieved successfully"
+      )
+    );
 });
 
 /**
@@ -239,5 +294,6 @@ export {
   getAllSources,
   getSourceById,
   addGithubSource,
+  getSourceStatus,
   deleteSource,
 };
