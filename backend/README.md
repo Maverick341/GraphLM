@@ -1,4 +1,4 @@
-# Backend API (Codename: Crocus)
+# GraphLM Backend API
 
 A Node.js + Express backend for multi-source knowledge indexing and chat reasoning. Supports PDF documents and GitHub repositories with vector embeddings and knowledge graph construction.
 
