@@ -29,7 +29,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
     const filename = req.file.filename;
     const title = path.parse(filename).name;
 
-    // Step 1: Create Source (status = "uploaded")
     source = await Source.create({
       title,
       sourceType: "pdf",
@@ -42,7 +41,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
 
     collectionName = `source_${source._id}`;
 
-    // Step 2: Qdrant indexing (vector embeddings)
     const vectorIndexResult = await indexPDFSource(
       documentLocalPath,
       collectionName,
@@ -50,7 +48,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
       "pdf"
     );
 
-    // Store VectorIndexMetadata
     await VectorIndexMetadata.create({
       sourceId: source._id,
       provider: "qdrant",
@@ -58,7 +55,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
       indexedAt: new Date()
     });
 
-    // Step 3: Set status = "indexing"
     source.status = "indexing";
     await source.save();
 
@@ -71,7 +67,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
     source.file.url = cloudinaryResponse.secure_url;
     await source.save();
 
-    // Step 4: Start Neo4j indexing asynchronously (don't await)
     (async () => {
       try {
         const graphResult = await buildPDFGraph({
@@ -79,7 +74,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
           docs: vectorIndexResult.splitDocs,
         });
 
-        // Store GraphMetadata
         await GraphMetadata.create({
           sourceId: source._id,
           entityCount: graphResult.nodesAdded,
@@ -87,11 +81,9 @@ export const addPDFSource = asyncHandler(async (req, res) => {
           builtAt: new Date()
         });
 
-        // Step 5: On success → status = "indexed"
         await Source.findByIdAndUpdate(source._id, { status: "indexed" });
         console.log(`Neo4j indexing completed successfully for source ${source._id}`);
       } catch (error) {
-        // Step 6: On failure → status = "failed" (NO deletion)
         console.error(`Neo4j indexing failed for source ${source._id}:`, error);
         await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch((err) => {
           console.error("Failed to update source status to failed:", err);
@@ -122,7 +114,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Error during PDF upload and indexing:", error);
 
-    // Try to clean up local file if it still exists
     if (documentLocalPath && fs.existsSync(documentLocalPath)) {
       try {
         fs.unlinkSync(documentLocalPath);
@@ -131,7 +122,6 @@ export const addPDFSource = asyncHandler(async (req, res) => {
       }
     }
 
-    // If source was created, set status to failed (NO deletion)
     if (source && source._id) {
       await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch((err) => {
         console.error("Failed to update source status to failed:", err);
@@ -217,12 +207,10 @@ export const deleteDocument = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Delete VectorIndexMetadata
     const vectorMetadata = await VectorIndexMetadata.findOneAndDelete({
       sourceId: source._id
     });
 
-    // Clean up Qdrant collection
     if (vectorMetadata && vectorMetadata.collectionName) {
       await deleteQdrantCollection(vectorMetadata.collectionName).catch((err) => {
         console.error(
@@ -232,20 +220,17 @@ export const deleteDocument = asyncHandler(async (req, res) => {
       });
     }
 
-    // Delete GraphMetadata
     await GraphMetadata.findOneAndDelete({ sourceId: source._id }).catch(
       (err) => {
         console.error("Failed to delete GraphMetadata:", err);
       }
     );
 
-    // Clean up Neo4j subgraph
     await deleteGraphBySourceId(source._id).catch((err) => {
       console.error(`Failed to delete Neo4j entities for source ${source._id}:`, err);
     });
   } catch (error) {
     console.error("Error during document deletion cleanup:", error);
-    // Don't throw - source is already deleted, just log cleanup errors
   }
 
   return res

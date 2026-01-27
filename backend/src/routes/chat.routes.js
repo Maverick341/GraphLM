@@ -15,9 +15,7 @@ const router = Router();
 // Apply auth middleware to all routes
 router.use(isLoggedIn);
 
-// ============================================
-// CHAT SESSION ENDPOINTS
-// ============================================
+
 
 /**
  * POST /api/v1/chat
@@ -58,9 +56,7 @@ router.route("/:chatId").patch(updateChatSession);
  */
 router.route("/:chatId").delete(deleteChatSession);
 
-// ============================================
-// CHAT MESSAGE ENDPOINTS
-// ============================================
+
 
 /**
  * POST /api/v1/chat/:chatId/messages

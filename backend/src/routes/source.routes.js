@@ -10,7 +10,6 @@ import {
 
 const router = express.Router();
 
-// Middleware: Require authentication for all source routes
 router.use(isLoggedIn);
 
 // GET /sources - List all sources for the logged-in user

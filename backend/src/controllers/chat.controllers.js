@@ -23,12 +23,10 @@ import { Readable } from "stream";
 export const createChatSession = asyncHandler(async (req, res) => {
   const { title } = req.body;
 
-  // Default title to "Untitled" if not provided or empty
   const chatTitle = title && typeof title === "string" && title.trim() !== "" 
     ? title.trim() 
     : "Untitled";
 
-  // Create ChatSession with empty sources array
   const chatSession = await ChatSession.create({
     title: chatTitle,
     userId: req.user._id,
@@ -75,12 +73,10 @@ export const listUserChatSessions = asyncHandler(async (req, res) => {
 export const getChatSessionById = asyncHandler(async (req, res) => {
   const { chatId } = req.params;
 
-  // Validate chatId format
   if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  // Fetch chat session
   const chatSession = await ChatSession.findById(chatId)
     .populate("sources", "title sourceType status")
     .lean();
@@ -89,7 +85,6 @@ export const getChatSessionById = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Chat session not found");
   }
 
-  // Verify ownership
   if (chatSession.userId.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You do not have permission to access this chat session");
   }
@@ -116,31 +111,26 @@ export const updateChatSession = asyncHandler(async (req, res) => {
   const { chatId } = req.params;
   const { title, sources } = req.body;
 
-  // Validate chatId format
   if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  // Fetch chat session
   const chatSession = await ChatSession.findById(chatId);
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
   }
 
-  // Verify ownership
   if (chatSession.userId.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You do not have permission to update this chat session");
   }
 
-  // If sources is provided, check message count
   if (sources && Array.isArray(sources)) {
     const messageCount = await ChatMessage.countDocuments({ chatId });
     if (messageCount > 0) {
       throw new ApiError(400, "Cannot update sources after messages have been added");
     }
 
-    // Validate new sources exist and belong to user
     const sourceRecords = await Source.find({
       _id: { $in: sources },
       ownerId: req.user._id,
@@ -150,19 +140,16 @@ export const updateChatSession = asyncHandler(async (req, res) => {
       throw new ApiError(400, "One or more sources do not exist or do not belong to you");
     }
 
-    // Merge existing sources with new sources and deduplicate
     const mergedSources = [...new Set([...chatSession.sources.map(s => s.toString()), ...sources])];
     chatSession.sources = mergedSources;
   }
 
-  // Update title if provided
   if (title && typeof title === "string" && title.trim() !== "") {
     chatSession.title = title.trim();
   }
 
   await chatSession.save();
 
-  // Populate sources for response
   const updatedSession = await chatSession.populate("sources");
 
   return res.status(200).json(
@@ -182,27 +169,22 @@ export const updateChatSession = asyncHandler(async (req, res) => {
 export const deleteChatSession = asyncHandler(async (req, res) => {
   const { chatId } = req.params;
 
-  // Validate chatId format
   if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  // Fetch chat session
   const chatSession = await ChatSession.findById(chatId);
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
   }
 
-  // Verify ownership
   if (chatSession.userId.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "You do not have permission to delete this chat session");
   }
 
-  // Delete all related ChatMessage documents (cascade delete)
   await ChatMessage.deleteMany({ chatId });
 
-  // Delete ChatSession
   await ChatSession.findByIdAndDelete(chatId);
 
   return res.status(200).json(
@@ -226,17 +208,14 @@ export const sendMessage = asyncHandler(async (req, res) => {
   const { chatId } = req.params;
   const { content } = req.body;
 
-  // Validate chatId format
   if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  // Validate content
   if (!content || typeof content !== "string" || content.trim() === "") {
     throw new ApiError(400, "Message content is required and must be a non-empty string");
   }
 
-  // Fetch and verify chat session with populated sources
   const chatSession = await ChatSession.findById(chatId).populate("sources", "title sourceType status");
 
   if (!chatSession) {
@@ -247,7 +226,6 @@ export const sendMessage = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You do not have permission to send messages in this chat");
   }
 
-  // Create and save user message
   const userMessage = await ChatMessage.create({
     chatId,
     role: "user",
@@ -296,7 +274,6 @@ export const sendMessage = asyncHandler(async (req, res) => {
     nodeStream.on("end", async () => {
       try {
         if (fullResponse.trim()) {
-          // Persist assistant message to MongoDB
           await ChatMessage.create({
             chatId,
             role: "assistant",
@@ -309,7 +286,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
       }
     });
 
-    // Handle stream errors
+    // Handle errors
     nodeStream.on("error", (error) => {
       console.error("Stream error:", error);
       if (!res.headersSent) {
@@ -343,16 +320,13 @@ export const listChatMessages = asyncHandler(async (req, res) => {
   const { chatId } = req.params;
   const { skip = 0, limit = 50 } = req.query;
 
-  // Validate chatId format
   if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  // Parse and validate pagination params
   const skipNum = Math.max(0, parseInt(skip, 10) || 0);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
 
-  // Verify chat session exists and belongs to user
   const chatSession = await ChatSession.findById(chatId);
 
   if (!chatSession) {

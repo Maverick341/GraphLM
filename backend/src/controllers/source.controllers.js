@@ -91,12 +91,10 @@ const addGithubSource = asyncHandler(async (req, res) => {
   const { repoUrl, branch = "main" } = req.body;
   const userId = req.user._id;
 
-  // Validation
   if (!repoUrl) {
     throw new ApiError(400, "Repository URL is required");
   }
 
-  // Validate repoUrl format (basic check for GitHub URL)
   if (!repoUrl.includes("github.com")) {
     throw new ApiError(400, "Invalid GitHub repository URL");
   }
@@ -110,7 +108,6 @@ const addGithubSource = asyncHandler(async (req, res) => {
     const urlMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
     const repoTitle = urlMatch ? `${urlMatch[1]}/${urlMatch[2]}` : repoUrl;
 
-    // Step 1: Create Source in MongoDB (status = "uploaded")
     source = await Source.create({
       title: repoTitle,
       sourceType: "github_repo",
@@ -124,7 +121,6 @@ const addGithubSource = asyncHandler(async (req, res) => {
 
     collectionName = `github_${source._id}`;
 
-    // Step 2: Qdrant indexing (vector embeddings)
     vectorIndexResult = await indexGithubSource({
       repoUrl,
       branch,
@@ -132,7 +128,6 @@ const addGithubSource = asyncHandler(async (req, res) => {
       sourceId: source._id,
     });
 
-    // Store VectorIndexMetadata
     await VectorIndexMetadata.create({
       sourceId: source._id,
       provider: "qdrant",
@@ -140,12 +135,10 @@ const addGithubSource = asyncHandler(async (req, res) => {
       indexedAt: new Date(),
     });
 
-    // Step 3: Set status = "indexing"
     source.status = "indexing";
     await source.save();
 
-    // Step 4: Start Neo4j indexing asynchronously (don't await)
-    // Index GitHub repository for graph structure and semantic relationships
+    // Start Neo4j indexing asynchronously (don't await)
     (async () => {
       try {
         const graphResult = await buildGithubRepoGraph({
@@ -153,7 +146,6 @@ const addGithubSource = asyncHandler(async (req, res) => {
           docs: vectorIndexResult.splitDocs,
         });
 
-        // Store GraphMetadata
         await GraphMetadata.create({
           sourceId: source._id,
           entityCount: graphResult.nodesAdded,
@@ -161,11 +153,9 @@ const addGithubSource = asyncHandler(async (req, res) => {
           builtAt: new Date(),
         });
 
-        // Step 5: On success → status = "indexed"
         await Source.findByIdAndUpdate(source._id, { status: "indexed" });
         console.log(`Neo4j indexing completed successfully for source ${source._id}`);
       } catch (error) {
-        // Step 6: On failure → status = "failed" (NO deletion)
         console.error(`Neo4j indexing failed for source ${source._id}:`, error);
         await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch(
           (err) => {
@@ -198,7 +188,6 @@ const addGithubSource = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Error during GitHub source creation and indexing:", error);
 
-    // If source was created, set status to failed (NO deletion)
     if (source && source._id) {
       await Source.findByIdAndUpdate(source._id, { status: "failed" }).catch(
         (err) => {
@@ -236,12 +225,10 @@ const getSourceStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Source not found");
   }
 
-  // Check vector indexing status
   const vectorMetadata = await VectorIndexMetadata.findOne({
     sourceId: id
   });
 
-  // Check graph indexing status
   const graphMetadata = await GraphMetadata.findOne({
     sourceId: id
   });
