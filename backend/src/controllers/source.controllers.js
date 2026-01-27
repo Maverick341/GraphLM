@@ -4,8 +4,8 @@ import { ApiError } from "../utils/api-error.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { indexGithubSource } from "../services/vectorIndex.js";
-import { buildGithubRepoGraph } from "../services/graphIndex.js";
+import { indexGithubSource, deleteQdrantCollection } from "../services/vectorIndex.js";
+import { buildGithubRepoGraph, deleteGraphBySourceId } from "../services/graphIndex.js";
 
 /**
  * Get all sources for the logged-in user
@@ -15,20 +15,37 @@ import { buildGithubRepoGraph } from "../services/graphIndex.js";
  */
 const getAllSources = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { page = 1, limit = 10 } = req.query;
+  let { page = 1, limit = 10 } = req.query;
 
-  // TODO: Query MongoDB for sources where ownerId === userId
-  // TODO: Apply pagination
-  // TODO: Return paginated results
+  page = parseInt(page, 10);
+  limit = parseInt(limit, 10);
 
-  const sources = [];
+  if (Number.isNaN(page) || Number.isNaN(limit) || page < 1 || limit < 1) {
+    throw new ApiError(400, "Invalid pagination parameters");
+  }
+
+  const [total, sources] = await Promise.all([
+    Source.countDocuments({ ownerId: userId }),
+    Source.find({ ownerId: userId })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+  ]);
+
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        sources,
+        {
+          items: sources,
+          page,
+          limit,
+          total,
+          totalPages,
+        },
         "Sources retrieved successfully"
       )
     );
@@ -43,11 +60,10 @@ const getSourceById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
 
-  // TODO: Query MongoDB for source where _id === id AND ownerId === userId
-  // TODO: Check if source exists
-  // TODO: Return source details
-
-  const source = null; // Placeholder
+  const source = await Source.findOne({
+    _id: id,
+    ownerId: userId,
+  });
 
   if (!source) {
     throw new ApiError(404, "Source not found");
@@ -265,18 +281,46 @@ const deleteSource = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
 
-  // TODO: Query MongoDB for source where _id === id AND ownerId === userId
-  // TODO: Check if source exists
-  // TODO: Delete source from MongoDB
-  // TODO: Delete VectorIndexMetadata record
-  // TODO: Delete GraphMetadata record
-  // TODO: Clean up Qdrant collection (optional, depends on cleanup strategy)
-  // TODO: Clean up Neo4j subgraph (optional, depends on cleanup strategy)
-
-  const source = null; // Placeholder
+  const source = await Source.findOne({
+    _id: id,
+    ownerId: userId,
+  });
 
   if (!source) {
     throw new ApiError(404, "Source not found");
+  }
+
+  const [vectorMetadata, graphMetadata] = await Promise.all([
+    VectorIndexMetadata.findOne({ sourceId: id }),
+    GraphMetadata.findOne({ sourceId: id }),
+  ]);
+
+  await Source.deleteOne({ _id: id, ownerId: userId });
+  await Promise.all([
+    VectorIndexMetadata.deleteOne({ sourceId: id }),
+    GraphMetadata.deleteOne({ sourceId: id }),
+  ]);
+
+  const cleanupTasks = [];
+
+  if (vectorMetadata?.collectionName) {
+    cleanupTasks.push(
+      deleteQdrantCollection(vectorMetadata.collectionName).catch((err) =>
+        console.error("Failed to delete Qdrant collection:", err)
+      )
+    );
+  }
+
+  if (graphMetadata) {
+    cleanupTasks.push(
+      deleteGraphBySourceId(id).catch((err) =>
+        console.error("Failed to delete Neo4j subgraph:", err)
+      )
+    );
+  }
+
+  if (cleanupTasks.length > 0) {
+    await Promise.allSettled(cleanupTasks);
   }
 
   return res
