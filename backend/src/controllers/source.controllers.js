@@ -4,8 +4,8 @@ import { ApiError } from "../utils/api-error.js";
 import { Source } from "../models/source.models.js";
 import { VectorIndexMetadata } from "../models/vectorIndexMetadata.models.js";
 import { GraphMetadata } from "../models/graphMetadata.models.js";
-import { indexGithubSource, deleteQdrantCollection } from "../services/vectorIndex.js";
-import { buildGithubRepoGraph, deleteGraphBySourceId } from "../services/graphIndex.js";
+import { indexGithubSource, deleteQdrantCollection } from "../services/indexing/vectorIndex.js";
+import { buildGithubRepoGraph, deleteGraphBySourceId } from "../services/indexing/graphIndex.js";
 
 /**
  * Get all sources for the logged-in user

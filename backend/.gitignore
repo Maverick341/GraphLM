@@ -2,3 +2,7 @@ node_modules
 .env
 context.md
 .vscode/mcp.json
+
+# Local SQLite fallback databases
+memory.db
+vector_store.db

@@ -1,7 +1,7 @@
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { RecursiveCharacterTextSplitter } from "@langchain/text-splitters";
-import { ApiError } from "../utils/api-error.js";
+import { ApiError } from "../../utils/api-error.js";
 
 const SPLITTER_CONFIG = {
   chunkSize: 1000,
