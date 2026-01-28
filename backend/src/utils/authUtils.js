@@ -2,9 +2,9 @@ import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 import crypto from "crypto";
 import dotenv from "dotenv";
-import { ApiError } from "./api-error.js";
-import { ErrorCodes } from "./constants.js";
-import config from "../config/config.js";
+import { ApiError } from "#utils/api-error.js";
+import { ErrorCodes } from "#utils/constants.js";
+import config from "#config/config.js";
 
 dotenv.config({
     path: "./.env"

@@ -1,6 +1,6 @@
-import config from "../config/config.js";
-import { ApiError } from "../utils/api-error.js";
-import getErrorMessage from "../utils/getErrorMessage.js";
+import config from "#config/config.js";
+import { ApiError } from "#utils/api-error.js";
+import getErrorMessage from "#utils/getErrorMessage.js";
 
 function errorHandler(err, req, res, next) {
   // If headers are already sent, delegate to the default Express error handler

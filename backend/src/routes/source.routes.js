@@ -1,12 +1,12 @@
 import express from "express";
-import { isLoggedIn } from "../middlewares/auth.middlewares.js";
+import { isLoggedIn } from "#middlewares/auth.middlewares.js";
 import {
   getAllSources,
   getSourceById,
   addGithubSource,
   getSourceStatus,
   deleteSource,
-} from "../controllers/source.controllers.js";
+} from "#controllers/source.controllers.js";
 
 const router = express.Router();
 

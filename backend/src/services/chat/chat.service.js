@@ -1,5 +1,5 @@
-import { VectorIndexMetadata } from "../../../models/vectorIndexMetadata.models.js";
-import { ChatMessage } from "../../../models/chatMessage.models.js";
+import { VectorIndexMetadata } from "#models/vectorIndexMetadata.models.js";
+import { ChatMessage } from "#models/chatMessage.models.js";
 import { runAgentWithRAG } from "./rag/agent/agentRunner.js";
 
 /**

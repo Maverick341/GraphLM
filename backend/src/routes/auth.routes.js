@@ -17,9 +17,9 @@ import {
   completeGoogleSignup,
   githubLogin,
   githubCallback,
-} from "../controllers/auth.controllers.js";
+} from "#controllers/auth.controllers.js";
 
-import { validate } from "../middlewares/validator.middlewares.js";
+import { validate } from "#middlewares/validator.middlewares.js";
 import {
   userLoginValidator,
   updateUserValidator,
@@ -29,14 +29,14 @@ import {
   emailOnlyValidator,
   userIdValidator,
   resetPasswordValidator,
-} from "../validators/index.js";
+} from "#validators/index.js";
 import {
   isAdmin,
   isLoggedIn,
   validateTempOAuthToken,
-} from "../middlewares/auth.middlewares.js";
-import { upload } from "../middlewares/multer.middlewares.js";
-import { catchMulterError } from "../utils/catchMulterErrors.js";
+} from "#middlewares/auth.middlewares.js";
+import { upload } from "#middlewares/multer.middlewares.js";
+import { catchMulterError } from "#utils/catchMulterErrors.js";
 
 const router = Router();
 

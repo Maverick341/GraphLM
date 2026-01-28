@@ -1,6 +1,6 @@
 import multer from "multer";
-import { ApiError } from "./api-error.js";
-import { ErrorCodes } from "./constants.js";
+import { ApiError } from "#utils/api-error.js";
+import { ErrorCodes } from "#utils/constants.js";
 
 export const catchMulterError = (upload, isAvatarRequired = true) => {
     return (req, res, next) => {

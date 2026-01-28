@@ -1,7 +1,7 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { QdrantVectorStore } from "@langchain/qdrant";
-import config from "../../../../config/config.js";
+import config from "#config/config.js";
 
 /**
  * Retrieve relevant context from Qdrant vector store

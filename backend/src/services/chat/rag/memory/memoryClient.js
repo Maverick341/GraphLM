@@ -1,5 +1,5 @@
 import { Memory } from "mem0ai/oss";
-import config from "../../../../config/config.js";
+import config from "#config/config.js";
 
 /**
  * Mem0 Memory client for semantic memory storage and retrieval

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isLoggedIn } from "../middlewares/auth.middlewares.js";
+import { isLoggedIn } from "#middlewares/auth.middlewares.js";
 import {
   createChatSession,
   listUserChatSessions,
@@ -8,7 +8,7 @@ import {
   deleteChatSession,
   sendMessage,
   listChatMessages,
-} from "../controllers/chat.controllers.js";
+} from "#controllers/chat.controllers.js";
 
 const router = Router();
 

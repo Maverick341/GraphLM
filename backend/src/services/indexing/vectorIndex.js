@@ -1,8 +1,8 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { QdrantVectorStore } from "@langchain/qdrant";
-import { ApiError } from "../../utils/api-error.js";
-import config from "../../config/config.js";
+import { ApiError } from "#utils/api-error.js";
+import config from "#config/config.js";
 import { loadAndPreparePDF, loadAndPrepareGithubRepo } from "./ingestion.js";
 
 

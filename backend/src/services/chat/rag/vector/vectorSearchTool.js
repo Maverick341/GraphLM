@@ -1,6 +1,6 @@
 import { tool } from "@openai/agents";
 import { z } from "zod";
-import { retrieveFromVector } from "./vector/vectorRetriever.js";
+import { retrieveFromVector } from "./vectorRetriever.js";
 
 /**
  * RAG tool for vector retrieval using Qdrant

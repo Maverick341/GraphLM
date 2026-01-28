@@ -2,8 +2,8 @@ import { ChatOpenAI } from "@langchain/openai";
 import { LLMGraphTransformer } from "@langchain/community/experimental/graph_transformers/llm";
 import { Neo4jGraph } from "@langchain/community/graphs/neo4j_graph";
 import pLimit from "p-limit";
-import { ApiError } from "../../utils/api-error.js";
-import config from "../../config/config.js";
+import { ApiError } from "#utils/api-error.js";
+import config from "#config/config.js";
 
 /**
  * Index documents to Neo4j graph database

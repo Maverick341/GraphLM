@@ -1,10 +1,10 @@
 import express from "express"
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import errorHandler from "./middlewares/errorHandler.js";
+import errorHandler from "#middlewares/errorHandler.js";
 import swaggerUi from "swagger-ui-express";
-import swaggerDocument from "./config/swagger.js";
-import config from "./config/config.js";
+import swaggerDocument from "#config/swagger.js";
+import config from "#config/config.js";
 // import path from "path";
 
 const app = express()
@@ -42,11 +42,11 @@ app.get("/api/v1/", (req, res) => {
 })
 
 //router imports
-import healthCheckRouter from "./routes/healthcheck.routes.js";
-import authRouter from "./routes/auth.routes.js";
-import documentRouter from "./routes/document.routes.js";
-import chatRouter from "./routes/chat.routes.js";
-import config from "./config/config.js";
+import healthCheckRouter from "#routes/healthcheck.routes.js";
+import authRouter from "#routes/auth.routes.js";
+import documentRouter from "#routes/document.routes.js";
+import chatRouter from "#routes/chat.routes.js";
+import config from "#config/config.js";
 
 app.use("/api/v1/healthCheck", healthCheckRouter);
 app.use("/api/v1/auth", authRouter);

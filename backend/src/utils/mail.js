@@ -1,6 +1,6 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
-import config from "../config/config";
+import config from "#config/config.js";
 
 export const sendMail = async (options) => {
     const mailGenerator = new Mailgen({

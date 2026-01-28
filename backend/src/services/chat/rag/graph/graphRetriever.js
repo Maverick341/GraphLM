@@ -1,5 +1,5 @@
 import neo4j from "neo4j-driver";
-import config from "../../../../config/config.js";
+import config from "#config/config.js";
 
 /**
  * Retrieve entities and relationships from Neo4j for RAG

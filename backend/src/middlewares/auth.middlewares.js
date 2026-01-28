@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import { User } from "../models/user.models.js";
-import { asyncHandler } from "../utils/async-handler.js";
-import { ErrorCodes } from "../utils/constants.js";
-import { ApiError } from "../utils/api-error.js";
-import config from "../config/config.js";
+import { User } from "#models/user.models.js";
+import { asyncHandler } from "#utils/async-handler.js";
+import { ErrorCodes } from "#utils/constants.js";
+import { ApiError } from "#utils/api-error.js";
+import config from "#config/config.js";
 
 export const isLoggedIn = asyncHandler(async (req, res, next) => {
     console.log(req.cookies);

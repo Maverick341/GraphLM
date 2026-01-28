@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { isLoggedIn } from "../middlewares/auth.middlewares.js";
-import { upload } from "../middlewares/multer.middlewares.js";
+import { isLoggedIn } from "#middlewares/auth.middlewares.js";
+import { upload } from "#middlewares/multer.middlewares.js";
 import {
   addPDFSource,
   listUserDocuments,
   getDocumentById,
   deleteDocument,
-} from "../controllers/document.controllers.js";
+} from "#controllers/document.controllers.js";
 
 const router = Router();
 

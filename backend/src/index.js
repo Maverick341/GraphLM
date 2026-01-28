@@ -1,7 +1,7 @@
-import app from "./app.js";
+import app from "#/app.js";
 import dotenv from "dotenv";
-import connectDB from "./db/db-connect.js";
-import config from "./config/config.js";
+import connectDB from "#db/db-connect.js";
+import config from "#config/config.js";
 
 dotenv.config({
     path: "./.env"

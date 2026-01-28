@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["./src/*"],
+      "#controllers/*": ["./src/controllers/*"],
+      "#routes/*": ["./src/routes/*"],
+      "#models/*": ["./src/models/*"],
+      "#utils/*": ["./src/utils/*"],
+      "#config/*": ["./src/config/*"],
+      "#db/*": ["./src/db/*"],
+      "#middlewares/*": ["./src/middlewares/*"],
+      "#services/*": ["./src/services/*"],
+      "#validators/*": ["./src/validators/*"]
+    },
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2020"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "public"]
+}

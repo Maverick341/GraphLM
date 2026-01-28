@@ -1,6 +1,6 @@
 import { Agent, Runner } from "@openai/agents";
 import { searchMemoryTool, saveMemoryTool } from "../memory/memoryTools.js";
-import config from "../../../../config/config.js";
+import config from "#config/config.js";
 import { vectorSearchTool } from "../vector/vectorSearchTool.js";
 import { graphSearchTool } from "../graph/graphSearchTool.js";
 

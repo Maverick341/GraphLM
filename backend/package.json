@@ -6,6 +6,18 @@
   "author": "",
   "type": "module",
   "main": "index.js",
+  "imports": {
+    "#/*": "./src/*",
+    "#controllers/*": "./src/controllers/*",
+    "#routes/*": "./src/routes/*",
+    "#models/*": "./src/models/*",
+    "#utils/*": "./src/utils/*",
+    "#config/*": "./src/config/*",
+    "#db/*": "./src/db/*",
+    "#middlewares/*": "./src/middlewares/*",
+    "#services/*": "./src/services/*",
+    "#validators/*": "./src/validators/*"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --no-deprecation src/index.js",
