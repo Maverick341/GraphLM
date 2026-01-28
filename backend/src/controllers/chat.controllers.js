@@ -5,6 +5,9 @@ import { ApiResponse } from "#utils/api-response.js";
 import { ApiError } from "#utils/api-error.js";
 import { asyncHandler } from "#utils/async-handler.js";
 import { runChatRAG } from "#services/chat/chat.service.js";
+import { persistConversationToMemory } from "#services/chat/rag/memory/memoryPersistence.js";
+import { memoryClient } from "#services/chat/rag/memory/memoryClient.js";
+import { deleteSessionMemories } from "#services/chat/rag/memory/memoryCleanup.js";
 import { Readable } from "stream";
 
 /**
@@ -140,8 +143,47 @@ export const updateChatSession = asyncHandler(async (req, res) => {
       throw new ApiError(400, "One or more sources do not exist or do not belong to you");
     }
 
+    // Track which sources are new
+    const existingSourceIds = chatSession.sources.map(s => s.toString());
+    const newSourceIds = sources.filter(id => !existingSourceIds.includes(id.toString()));
+
     const mergedSources = [...new Set([...chatSession.sources.map(s => s.toString()), ...sources])];
     chatSession.sources = mergedSources;
+
+    // Notify agent via memory about new sources (only if sources were actually added)
+    if (newSourceIds.length > 0) {
+      try {
+        const newSources = sourceRecords.filter(sr => 
+          newSourceIds.includes(sr._id.toString())
+        );
+        
+        const sourceNames = newSources.map(s => s.title).join(", ");
+        
+        // Save to memory as a temporary notification (expires in 3 days)
+        // This is just a notification, not a permanent fact
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 3);
+        
+        await memoryClient.add(
+          [{ 
+            role: "system", 
+            content: `User added new sources to this chat: ${sourceNames}. These sources are now available for search and retrieval.` 
+          }],
+          {
+            user_id: chatSession.userId.toString(),
+            run_id: chatSession._id.toString(),
+            agent_id: "graphlm_assistant",
+            app_id: "graphlm",
+            expiration_date: expirationDate.toISOString(), // Expires in 3 days
+          }
+        );
+        
+        console.log(`Notified agent about ${newSourceIds.length} new source(s) in chat ${chatId} (expires in 3 days)`);
+      } catch (memError) {
+        console.error("Failed to save source update to memory:", memError);
+        // Don't fail the request if memory save fails
+      }
+    }
   }
 
   if (title && typeof title === "string" && title.trim() !== "") {
@@ -164,6 +206,7 @@ export const updateChatSession = asyncHandler(async (req, res) => {
  * Responsibilities:
  * - Delete ChatSession document
  * - Cascade delete all related ChatMessage records
+ * - Delete all associated memories from mem0
  * - Verify ownership (chat belongs to authenticated user)
  */
 export const deleteChatSession = asyncHandler(async (req, res) => {
@@ -183,8 +226,22 @@ export const deleteChatSession = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You do not have permission to delete this chat session");
   }
 
+  // Delete all messages in the chat
   await ChatMessage.deleteMany({ chatId });
 
+  // Delete all memories associated with this chat session
+  try {
+    await deleteSessionMemories({
+      userId: chatSession.userId.toString(),
+      chatSessionId: chatSession._id.toString(),
+    });
+    console.log(`Deleted memories for chat session ${chatId}`);
+  } catch (memError) {
+    console.error("Failed to delete session memories:", memError);
+    // Don't fail the request if memory deletion fails
+  }
+
+  // Delete the chat session itself
   await ChatSession.findByIdAndDelete(chatId);
 
   return res.status(200).json(
@@ -270,16 +327,25 @@ export const sendMessage = asyncHandler(async (req, res) => {
     // Pipe stream to response
     nodeStream.pipe(res);
 
-    // When streaming completes, persist assistant message
+    // When streaming completes, persist assistant message and save to memory
     nodeStream.on("end", async () => {
       try {
         if (fullResponse.trim()) {
+          // Persist assistant message to database
           await ChatMessage.create({
             chatId,
             role: "assistant",
             content: fullResponse.trim(),
           });
           console.log(`Assistant message persisted for chat ${chatId}`);
+
+          // Automatically persist conversation turn to memory
+          // This ensures the conversation context is available for future retrieval
+          await persistConversationToMemory({
+            userMessage: content.trim(),
+            assistantMessage: fullResponse.trim(),
+            chatSession,
+          });
         }
       } catch (error) {
         console.error("Failed to persist assistant message:", error);

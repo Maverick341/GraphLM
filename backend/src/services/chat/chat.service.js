@@ -61,18 +61,11 @@ export const runChatRAG = async ({ chatSession, userMessage, chatId }) => {
       throw new Error("No indexed collections available for retrieval.");
     }
 
-    // Load recent conversation history (last 10 messages)
-    const conversationHistory = await ChatMessage.find({ chatId })
-      .select("role content")
-      .sort({ createdAt: 1 })
-      .limit(10)
-      .lean();
-
     // Run agent with RAG and memory tools
+    // Note: Conversation history is handled by memory tools - no need to pass it explicitly
     const responseStream = await runAgentWithRAG({
       userMessage,
       sources: sourcesWithCollections,
-      conversationHistory,
       chatSession,
     });
 

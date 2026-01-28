@@ -1,5 +1,10 @@
 import { Agent, Runner } from "@openai/agents";
-import { searchMemoryTool, saveMemoryTool } from "../memory/memoryTools.js";
+import { 
+  searchMemoryTool, 
+  saveMemoryTool, 
+  updateMemoryTool, 
+  deleteMemoryTool 
+} from "../memory/memoryTools.js";
 import config from "#config/config.js";
 import { vectorSearchTool } from "../vector/vectorSearchTool.js";
 import { graphSearchTool } from "../graph/graphSearchTool.js";
@@ -19,24 +24,28 @@ Your capabilities:
 - You can search structured knowledge graphs for entities and relationships (graph_search tool)
 - You can search past conversations and user context using the search_memory tool
 - You can save important information for later recall using the save_memory tool
+- You can update existing memories when information changes using the update_memory tool
+- You can delete memories that are no longer relevant using the delete_memory tool
 - You provide accurate, well-sourced answers based on indexed content and memory
 - You cite sources when providing information
 
-You have access to two search tools:
+You have access to search tools:
 1. vector_search – for finding relevant text passages and content-based queries
 2. graph_search – for understanding entities, relationships, dependencies, and structure
 
-Guidelines:
-- Use vector_search for factual or content-based queries
-- Use graph_search when the question involves relationships, architecture, dependencies, or structure
-- You may use both tools before answering to get comprehensive information
-- Use search_memory to recall past interactions, preferences, or context
+Memory management guidelines:
+- Use search_memory to recall past interactions, preferences, or context. Search results include memory IDs in format [ID: xxx]
 - Use save_memory to store important facts, preferences, or context for future conversations
+- Use update_memory when information changes. First search to find the memory ID, then call update_memory with that ID and new content
+- Use delete_memory to remove outdated or incorrect information. First search to get the memory ID
 - Be proactive about searching memory when users reference past conversations
 - Save key information that should be remembered (preferences, decisions, important facts)
+
+Response guidelines:
 - Be concise but comprehensive in your responses
 - If information is not found in sources or memory, clearly state that
 - Provide specific references when quoting or paraphrasing from sources
+- When updating/deleting memories, confirm the action to the user
 `;
 
   if (sources.length > 0) {
@@ -56,14 +65,13 @@ Guidelines:
  * @param {Object} params - Agent parameters
  * @param {string} params.userMessage - User's message content
  * @param {Array} params.sources - Array of source objects with collectionName
- * @param {Array} params.conversationHistory - Previous messages in the conversation
  * @param {Object} params.chatSession - Chat session for memory scoping
  * @returns {Promise<ReadableStream>} Streaming response from the agent
+ * @note Conversation history is managed via memory tools - agent retrieves relevant context on-demand
  */
 export const runAgentWithRAG = async ({ 
   userMessage, 
   sources = [], 
-  conversationHistory = [],
   chatSession,
 }) => {
   try {
@@ -79,33 +87,29 @@ export const runAgentWithRAG = async ({
       name: "research-assistant",
       model: config.OPENAI_LLM_MODEL || "gpt-4o",
       instructions: systemPrompt,
-      tools: [vectorSearchTool, graphSearchTool, searchMemoryTool, saveMemoryTool],
-      toolContext: { chatSession, sources },
+      tools: [
+        vectorSearchTool, 
+        graphSearchTool, 
+        searchMemoryTool, 
+        saveMemoryTool, 
+        updateMemoryTool, 
+        deleteMemoryTool
+      ],
     });
-
-    // Prepare messages array with conversation history
-    const messages = [
-      ...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-      {
-        role: "user",
-        content: userMessage,
-      },
-    ];
 
     // Create runner for agent execution
-    const runner = new Runner({
-      agent,
-      apiKey: config.OPENAI_API_KEY,
-    });
+    const runner = new Runner();
 
     // Run agent with streaming enabled
-    const stream = await runner.run({
-      messages,
-      stream: true,
-    });
+    // Note: Only passing current user message - agent uses memory tools to retrieve relevant history
+    const stream = await runner.run(
+      agent,
+      userMessage,
+      {
+        stream: true,
+        context: { chatSession, sources },
+      }
+    );
 
     // Convert agent stream to text stream compatible with Express
     const textStream = new ReadableStream({
@@ -113,11 +117,11 @@ export const runAgentWithRAG = async ({
         try {
           for await (const chunk of stream) {
             // Extract text content from agent response chunks
-            if (chunk.type === "text") {
-              controller.enqueue(chunk.text);
-            } else if (chunk.type === "tool_call") {
+            if (chunk.type === "content_part.delta" && chunk.delta?.text) {
+              controller.enqueue(chunk.delta.text);
+            } else if (chunk.type === "tool_call.delta") {
               // Log tool calls for debugging
-              console.log(`Tool called: ${chunk.name}`, chunk.arguments);
+              console.log(`Tool called:`, chunk);
             } else if (chunk.type === "error") {
               console.error("Agent error:", chunk.error);
               controller.error(new Error(chunk.error));
