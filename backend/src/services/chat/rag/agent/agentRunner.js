@@ -1,7 +1,8 @@
 import { Agent, Runner } from "@openai/agents";
-import { vectorSearchTool, graphSearchTool } from "../rag.service.js";
 import { searchMemoryTool, saveMemoryTool } from "../memory/memoryTools.js";
 import config from "../../../../config/config.js";
+import { vectorSearchTool } from "../vector/vectorSearchTool.js";
+import { graphSearchTool } from "../graph/graphSearchTool.js";
 
 /**
  * Build system prompt for the research assistant
