@@ -1,23 +1,23 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import axios from "axios";
-import { asyncHandler } from "#/utils/async-handler.js";
-import { User } from "#/models/user.models.js";
+import { asyncHandler } from "#utils/async-handler.js";
+import { User } from "#models/user.models.js";
 import {
   sendMail,
   emailVerificationMailGenContent,
   resetPasswordMailGenContent,
-} from "#/utils/mail.js";
-import { ApiError } from "#/utils/api-error.js";
-import { ErrorCodes } from "#/utils/constants.js";
-import { ApiResponse } from "#/utils/api-response.js";
+} from "#utils/mail.js";
+import { ApiError } from "#utils/api-error.js";
+import { ErrorCodes } from "#utils/constants.js";
+import { ApiResponse } from "#utils/api-response.js";
 import {
   generateNonce,
   generateState,
   verifyGoogleToken,
-} from "#/utils/authUtils.js";
-import { uploadOnCloudinary } from "#/utils/cloudinary.js";
-import config from "#/config/config.js";
+} from "#utils/authUtils.js";
+import { uploadOnCloudinary } from "#utils/cloudinary.js";
+import config from "#config/config.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, username, password } = req.body;

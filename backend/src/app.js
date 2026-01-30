@@ -46,7 +46,6 @@ import healthCheckRouter from "#routes/healthcheck.routes.js";
 import authRouter from "#routes/auth.routes.js";
 import documentRouter from "#routes/document.routes.js";
 import sessionRouter from "#routes/session.routes.js";
-import config from "#config/config.js";
 
 app.use("/api/v1/healthCheck", healthCheckRouter);
 app.use("/api/v1/auth", authRouter);
