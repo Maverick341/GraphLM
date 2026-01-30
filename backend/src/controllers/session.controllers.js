@@ -1,17 +1,17 @@
-import { ChatSession } from "#models/chatSession.models.js";
-import { ChatMessage } from "#models/chatMessage.models.js";
+import { ChatSession } from "#models/sessionSession.models.js";
+import { ChatMessage } from "#models/sessionMessage.models.js";
 import { Source } from "#models/source.models.js";
 import { ApiResponse } from "#utils/api-response.js";
 import { ApiError } from "#utils/api-error.js";
 import { asyncHandler } from "#utils/async-handler.js";
-import { runChatRAG } from "#services/chat/chat.service.js";
-import { persistConversationToMemory } from "#services/chat/rag/memory/memoryPersistence.js";
-import { memoryClient } from "#services/chat/rag/memory/memoryClient.js";
-import { deleteSessionMemories } from "#services/chat/rag/memory/memoryCleanup.js";
+import { runChatRAG } from "#services/session/session.service.js";
+import { persistConversationToMemory } from "#services/session/rag/memory/memoryPersistence.js";
+import { memoryClient } from "#services/session/rag/memory/memoryClient.js";
+import { deleteSessionMemories } from "#services/session/rag/memory/memoryCleanup.js";
 import { Readable } from "stream";
 
 /**
- * POST /api/v1/chat
+ * POST /api/v1/session
  * Create a new chat session
  * 
  * Responsibilities:
@@ -21,7 +21,7 @@ import { Readable } from "stream";
  * - Enforce ownership (userId = req.user._id)
  * 
  * Note: Sources are uploaded/indexed separately via /sources endpoints,
- * then attached to chat sessions using PATCH /api/v1/chat/:chatId
+ * then attached to chat sessions using PATCH /api/v1/session/:sessionId
  */
 export const createChatSession = asyncHandler(async (req, res) => {
   const { title } = req.body;
@@ -42,7 +42,7 @@ export const createChatSession = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/v1/chat
+ * GET /api/v1/session
  * List all chat sessions for authenticated user
  * 
  * Responsibilities:
@@ -65,7 +65,7 @@ export const listUserChatSessions = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/v1/chat/:chatId
+ * GET /api/v1/session/:sessionId
  * Retrieve a specific chat session by ID
  * 
  * Responsibilities:
@@ -74,13 +74,13 @@ export const listUserChatSessions = asyncHandler(async (req, res) => {
  * - Verify ownership (chat belongs to authenticated user)
  */
 export const getChatSessionById = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
 
-  if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
-    throw new ApiError(400, "Invalid chat ID format");
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new ApiError(400, "Invalid session ID format");
   }
 
-  const chatSession = await ChatSession.findById(chatId)
+  const chatSession = await ChatSession.findById(sessionId)
     .populate("sources", "title sourceType status")
     .lean();
 
@@ -98,7 +98,7 @@ export const getChatSessionById = asyncHandler(async (req, res) => {
 });
 
 /**
- * PATCH /api/v1/chat/:chatId
+ * PATCH /api/v1/session/:sessionId
  * Update a chat session (title, sources)
  * 
  * Responsibilities:
@@ -111,14 +111,14 @@ export const getChatSessionById = asyncHandler(async (req, res) => {
  * Note: This is the primary endpoint for attaching indexed sources to chat sessions.
  */
 export const updateChatSession = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
   const { title, sources } = req.body;
 
-  if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  const chatSession = await ChatSession.findById(chatId);
+  const chatSession = await ChatSession.findById(sessionId);
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
@@ -129,7 +129,7 @@ export const updateChatSession = asyncHandler(async (req, res) => {
   }
 
   if (sources && Array.isArray(sources)) {
-    const messageCount = await ChatMessage.countDocuments({ chatId });
+    const messageCount = await ChatMessage.countDocuments({ sessionId });
     if (messageCount > 0) {
       throw new ApiError(400, "Cannot update sources after messages have been added");
     }
@@ -161,8 +161,9 @@ export const updateChatSession = asyncHandler(async (req, res) => {
         
         // Save to memory as a temporary notification (expires in 3 days)
         // This is just a notification, not a permanent fact
+        const SOURCE_UPDATE_MEMORY_TTL_DAYS = 3;
         const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + 3);
+        expirationDate.setDate(expirationDate.getDate() + SOURCE_UPDATE_MEMORY_TTL_DAYS);
         
         await memoryClient.add(
           [{ 
@@ -178,7 +179,7 @@ export const updateChatSession = asyncHandler(async (req, res) => {
           }
         );
         
-        console.log(`Notified agent about ${newSourceIds.length} new source(s) in chat ${chatId} (expires in 3 days)`);
+        console.log(`Notified agent about ${newSourceIds.length} new source(s) in chat ${sessionId} (expires in 3 days)`);
       } catch (memError) {
         console.error("Failed to save source update to memory:", memError);
         // Don't fail the request if memory save fails
@@ -200,7 +201,7 @@ export const updateChatSession = asyncHandler(async (req, res) => {
 });
 
 /**
- * DELETE /api/v1/chat/:chatId
+ * DELETE /api/v1/session/:sessionId
  * Delete a chat session by ID
  * 
  * Responsibilities:
@@ -210,13 +211,13 @@ export const updateChatSession = asyncHandler(async (req, res) => {
  * - Verify ownership (chat belongs to authenticated user)
  */
 export const deleteChatSession = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
 
-  if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
-  const chatSession = await ChatSession.findById(chatId);
+  const chatSession = await ChatSession.findById(sessionId);
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
@@ -227,7 +228,7 @@ export const deleteChatSession = asyncHandler(async (req, res) => {
   }
 
   // Delete all messages in the chat
-  await ChatMessage.deleteMany({ chatId });
+  await ChatMessage.deleteMany({ sessionId });
 
   // Delete all memories associated with this chat session
   try {
@@ -235,14 +236,14 @@ export const deleteChatSession = asyncHandler(async (req, res) => {
       userId: chatSession.userId.toString(),
       chatSessionId: chatSession._id.toString(),
     });
-    console.log(`Deleted memories for chat session ${chatId}`);
+    console.log(`Deleted memories for chat session ${sessionId}`);
   } catch (memError) {
     console.error("Failed to delete session memories:", memError);
     // Don't fail the request if memory deletion fails
   }
 
   // Delete the chat session itself
-  await ChatSession.findByIdAndDelete(chatId);
+  await ChatSession.findByIdAndDelete(sessionId);
 
   return res.status(200).json(
     new ApiResponse(200, {}, "Chat session deleted successfully")
@@ -250,7 +251,7 @@ export const deleteChatSession = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /api/v1/chat/:chatId/messages
+ * POST /api/v1/session/:sessionId/messages
  * Send a new message in a chat session
  * 
  * Responsibilities:
@@ -262,10 +263,10 @@ export const deleteChatSession = asyncHandler(async (req, res) => {
  * - Persist assistant response after streaming completes
  */
 export const sendMessage = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
   const { content } = req.body;
 
-  if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
@@ -273,7 +274,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Message content is required and must be a non-empty string");
   }
 
-  const chatSession = await ChatSession.findById(chatId).populate("sources", "title sourceType status");
+  const chatSession = await ChatSession.findById(sessionId).populate("sources", "title sourceType status");
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
@@ -284,7 +285,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
   }
 
   const userMessage = await ChatMessage.create({
-    chatId,
+    sessionId,
     role: "user",
     content: content.trim(),
   });
@@ -294,7 +295,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     const responseStream = await runChatRAG({
       chatSession,
       userMessage: content.trim(),
-      chatId,
+      sessionId,
     });
 
     // Set headers for streaming response
@@ -333,11 +334,11 @@ export const sendMessage = asyncHandler(async (req, res) => {
         if (fullResponse.trim()) {
           // Persist assistant message to database
           await ChatMessage.create({
-            chatId,
+            sessionId,
             role: "assistant",
             content: fullResponse.trim(),
           });
-          console.log(`Assistant message persisted for chat ${chatId}`);
+          console.log(`Assistant message persisted for chat ${sessionId}`);
 
           // Automatically persist conversation turn to memory
           // This ensures the conversation context is available for future retrieval
@@ -373,7 +374,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/v1/chat/:chatId/messages
+ * GET /api/v1/session/:sessionId/messages
  * List all messages in a chat session
  * 
  * Responsibilities:
@@ -383,17 +384,20 @@ export const sendMessage = asyncHandler(async (req, res) => {
  * - Verify ownership (chat belongs to authenticated user)
  */
 export const listChatMessages = asyncHandler(async (req, res) => {
-  const { chatId } = req.params;
+  const { sessionId } = req.params;
   const { skip = 0, limit = 50 } = req.query;
 
-  if (!chatId || !chatId.match(/^[0-9a-fA-F]{24}$/)) {
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
     throw new ApiError(400, "Invalid chat ID format");
   }
 
   const skipNum = Math.max(0, parseInt(skip, 10) || 0);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+  const DEFAULT_MESSAGE_LIMIT = 50;
+  const MAX_MESSAGE_LIMIT = 100;
+  
+  const limitNum = Math.min(MAX_MESSAGE_LIMIT, Math.max(1, parseInt(limit, 10) || DEFAULT_MESSAGE_LIMIT));
 
-  const chatSession = await ChatSession.findById(chatId);
+  const chatSession = await ChatSession.findById(sessionId);
 
   if (!chatSession) {
     throw new ApiError(404, "Chat session not found");
@@ -404,7 +408,7 @@ export const listChatMessages = asyncHandler(async (req, res) => {
   }
 
   // Fetch messages with pagination and sorting
-  const messages = await ChatMessage.find({ chatId })
+  const messages = await ChatMessage.find({ sessionId })
     .select("role content createdAt")
     .sort({ createdAt: 1 })
     .skip(skipNum)
@@ -412,7 +416,7 @@ export const listChatMessages = asyncHandler(async (req, res) => {
     .lean();
 
   // Get total message count for pagination metadata
-  const totalMessages = await ChatMessage.countDocuments({ chatId });
+  const totalMessages = await ChatMessage.countDocuments({ sessionId });
 
   return res.status(200).json(
     new ApiResponse(200, {
@@ -424,5 +428,51 @@ export const listChatMessages = asyncHandler(async (req, res) => {
         hasMore: skipNum + limitNum < totalMessages
       }
     }, "Messages retrieved successfully")
+  );
+});
+
+/**
+ * POST /api/v1/session/:sessionId/graphQuery
+ * KG visualization query (Studio panel)
+ *
+ * Responsibilities:
+ * - Validate session ownership
+ * - Use session sources as scope
+ * - Return raw subgraph (nodes + edges) for visualization
+ * - MUST NOT use chat graph retriever or LLM formatting
+ */
+export const graphQueryFromSession = asyncHandler(async (req, res) => {
+  const { sessionId } = req.params;
+  const { query } = req.body;
+
+  if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new ApiError(400, "Invalid session ID format");
+  }
+
+  if (!query || typeof query !== "string" || query.trim() === "") {
+    throw new ApiError(400, "Query is required and must be a non-empty string");
+  }
+
+  const chatSession = await ChatSession.findById(sessionId).populate(
+    "sources",
+    "title sourceType status",
+  );
+
+  if (!chatSession) {
+    throw new ApiError(404, "Chat session not found");
+  }
+
+  if (chatSession.userId.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You do not have permission to query this session");
+  }
+
+  if (!Array.isArray(chatSession.sources) || chatSession.sources.length === 0) {
+    throw new ApiError(400, "No sources attached to this session");
+  }
+
+  // Placeholder until KG visualization retriever is implemented.
+  // This endpoint must return raw nodes + edges and must not use chat retrievers.
+  return res.status(501).json(
+    new ApiResponse(501, { nodes: [], edges: [] }, "KG visualization is not implemented yet")
   );
 });

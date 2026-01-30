@@ -1,62 +1,78 @@
 import { tool } from "@openai/agents";
 import { z } from "zod";
-import { retrieveFromGraph } from "./graphRetriever.js";
+import { fetchGraphFacts } from "./fetchGraphFacts.js";
 
 /**
- * Graph search tool for OpenAI Agent
- * Enables semantic search over structured knowledge graphs in Neo4j
+ * CHAT GRAPH SEARCH TOOL
+ * Purpose:
+ *  - Ground LLM responses using knowledge graph facts
+ *  - NOT for visualization
+ *  - NOT for raw graph traversal
  */
 export const graphSearchTool = tool({
   name: "graph_search",
   description:
-    "Search structured knowledge graph for entities and relationships. " +
-    "Use this when the query involves relationships, architecture, dependencies, or structure. " +
-    "This tool finds entities and their connections in the knowledge graph.",
+    "Search the knowledge graph for factual relationships between entities. " +
+    "Use this tool to understand architecture, dependencies, components, or how concepts are connected. " +
+    "Returns grounded graph facts suitable for reasoning and explanation.",
+
   parameters: z.object({
-    query: z.string().describe("Concept or entity to search for"),
-    limit: z.number().optional().default(25).describe("Maximum number of results to return (default: 25)"),
+    query: z
+      .string()
+      .describe("Entity or concept to search for in the knowledge graph"),
+    anchorLimit: z
+      .number()
+      .optional()
+      .default(10)
+      .describe("Maximum number of anchor entities to consider (default: 10)"),
+    hopDepth: z
+      .number()
+      .optional()
+      .default(2)
+      .describe(
+        "Maximum relationship depth to explore from anchor entities (default: 2)",
+      ),
   }),
-  execute: async ({ query, limit }, context = {}) => {
+
+  execute: async ({ query, anchorLimit, hopDepth }, context = {}) => {
     try {
       const { sources = [] } = context;
-      
-      // Extract sourceIds from the sources context
-      const sourceIds = sources.map(source => source.sourceId || source._id);
-      
+
+      // Extract sourceIds from active chat sources
+      const sourceIds = sources.map((s) => s.sourceId || s._id).filter(Boolean);
+
       if (sourceIds.length === 0) {
         return {
           success: false,
-          message: "No sources available for graph search in this chat session",
+          message:
+            "No active sources available. Graph search requires indexed documents.",
           facts: [],
         };
       }
 
-      const results = await retrieveFromGraph({
+      const facts = await fetchGraphFacts({
         query,
         sourceIds,
-        limit,
+        anchorLimit,
+        hopDepth,
       });
 
-      if (!results || results.length === 0) {
+      if (!facts || facts.length === 0) {
         return {
           success: false,
-          message: "No related entities found in the graph",
+          message: "No relevant graph facts found for this query.",
           facts: [],
         };
       }
 
       return {
         success: true,
-        message: `Found ${results.length} graph facts`,
-        facts: results.map((item, idx) => ({
-          index: idx + 1,
-          entity: item.entity,
-          relationship: item.relationship,
-          related: item.relatedEntity,
-        })),
+        message: `Retrieved ${facts.length} grounded graph facts.`,
+        facts,
       };
     } catch (error) {
       console.error("Graph search tool error:", error);
+
       return {
         success: false,
         message: `Graph search failed: ${error.message}`,

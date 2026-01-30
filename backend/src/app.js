@@ -45,13 +45,24 @@ app.get("/api/v1/", (req, res) => {
 import healthCheckRouter from "#routes/healthcheck.routes.js";
 import authRouter from "#routes/auth.routes.js";
 import documentRouter from "#routes/document.routes.js";
-import chatRouter from "#routes/chat.routes.js";
+import sessionRouter from "#routes/session.routes.js";
 import config from "#config/config.js";
 
 app.use("/api/v1/healthCheck", healthCheckRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/documents", documentRouter);
-app.use("/api/v1/chat", chatRouter);
+
+// Backward-compatible alias for previously used /api/v1/chat endpoint.
+// Adds a deprecation header but otherwise reuses the sessionRouter.
+app.use(
+  "/api/v1/chat",
+  (req, res, next) => {
+    res.setHeader("X-Deprecated-Endpoint", "/api/v1/chat is deprecated; please use /api/v1/session instead.");
+    next();
+  },
+  sessionRouter
+);
+app.use("/api/v1/session", sessionRouter);
 
 app.use(errorHandler);
 
